@@ -5,7 +5,7 @@ Scrivi "fatturato mensile 2025": l'agente legge lo schema, scrive ed esegue la q
 
 | Parte | Tecnologia |
 |---|---|
-| LLM | Amazon Bedrock (default: OpenAI GPT-6 Luna, region `eu-north-1`), autenticazione con **Bedrock API key** |
+| LLM | Amazon Bedrock (default: Anthropic Claude Haiku 5.5, region `eu-north-1`), autenticazione con **Bedrock API key** |
 | Agente | LangChain 1.x (`create_agent`, che gira su LangGraph) + `langchain-aws` (`ChatBedrockConverse`) |
 | Backend | Python, FastAPI, SQLAlchemy |
 | Frontend | React 19, TypeScript, Vite, Recharts |
@@ -86,7 +86,7 @@ flowchart LR
     U[Utente] -->|domanda| FE["Frontend React<br/>(Vite, Recharts)"]
     FE -->|"POST /api/query<br/>(proxy Vite)"| API["FastAPI<br/>main.py"]
     API --> AG["Agente LangChain<br/>agent.py"]
-    AG <-->|"Converse API<br/>Bearer API key"| BR["Amazon Bedrock<br/>GPT-6 Luna"]
+    AG <-->|"Converse API<br/>Bearer API key"| BR["Amazon Bedrock<br/>Claude Haiku 5.5"]
     AG -->|tool calls| T["Tools<br/>describe_tables · run_sql · make_chart"]
     T --> DB["db.py<br/>guard SQL + SQLAlchemy"]
     DB --> D[("Database<br/>(SQLite demo o il tuo)")]
@@ -335,7 +335,7 @@ La documentazione interattiva (Swagger) è su `http://127.0.0.1:8642/docs`.
 
 **Quali dati escono verso Bedrock:**
 - domanda, nomi delle tabelle, colonne, **3 righe di esempio** per ogni tabella descritta, **le prime 20 righe** di ogni risultato e i messaggi d'errore SQL;
-- con il profilo `global.openai.gpt-6-luna` l'elaborazione può avvenire **anche fuori dall'UE**. Se i dati sono sensibili, valuta un profilo regionale (se disponibile) e limita quali tabelle/viste l'utente DB può vedere.
+- con il profilo `global.anthropic.claude-haiku-5-5` l'elaborazione può avvenire **anche fuori dall'UE**. Se i dati sono sensibili, valuta un profilo regionale (se disponibile) e limita quali tabelle/viste l'utente DB può vedere.
 
 **Segreti:**
 - la key va **solo** in `backend/.env`, che `.gitignore` esclude. **Mai** in `.env.example`, che viene committato;
@@ -353,7 +353,7 @@ Tutte le variabili stanno in `backend/.env`:
 |---|---|---|
 | `AWS_BEARER_TOKEN_BEDROCK` | — | **Bedrock API key** (console Bedrock → API keys). Obbligatoria |
 | `AWS_REGION` | `eu-north-1` | Region Bedrock. Le key *short-term* sono legate alla region in cui sono state generate |
-| `BEDROCK_MODEL_ID` | `global.openai.gpt-6-luna` | ID del modello o dell'inference profile. GPT-6 Luna via Converse richiede un profilo (`global.`), non l'ID base |
+| `BEDROCK_MODEL_ID` | `global.anthropic.claude-haiku-5-5` | ID del modello o dell'inference profile. Se la console indica un profilo (`global.`), usa quello invece dell'ID base |
 | `DATABASE_URL` | vuoto → DB demo | URL SQLAlchemy |
 | `MAX_ROWS` | `1000` | Righe massime restituite all'interfaccia |
 | `AGENT_MAX_STEPS` | `15` | Chiamate massime al modello per domanda |
@@ -405,7 +405,7 @@ I test coprono il guard SQL (scritture, query multiple, CTE con `DELETE`, `SELEC
 |---|---|---|
 | `IncompleteSignatureException ... Authorization header requires 'Credential' parameter` | Il backend è partito con la key **vuota** (es. `.env` modificato dopo l'avvio) | Controlla `AWS_BEARER_TOKEN_BEDROCK` in `backend/.env` e **riavvia** il backend |
 | `ExpiredTokenException` / errori di autorizzazione dopo qualche ora | Key short-term scaduta | Genera una nuova key (o una long-term) e riavvia |
-| `ValidationException` sul model ID / "on-demand throughput isn't supported" | ID base usato al posto dell'inference profile, o modello non abilitato nell'account | Usa l'ID del profilo indicato in console (es. `global.openai.gpt-6-luna`) e abilita l'accesso al modello |
+| `ValidationException` sul model ID / "on-demand throughput isn't supported" | ID base usato al posto dell'inference profile, o modello non abilitato nell'account | Usa l'ID del profilo indicato in console (es. `global.anthropic.claude-haiku-5-5`) e abilita l'accesso al modello |
 | Il frontend mostra `HTTP 500`/`502` senza dettagli | Backend spento o su un'altra porta | Avvia il backend su `8642` o aggiorna il proxy in `vite.config.ts` |
 | `error while attempting to bind on address` | Porta già usata | Avvia uvicorn su un'altra porta e aggiorna `vite.config.ts` |
 | "L'agente ha superato il numero massimo di passi" | Domanda ambigua o schema difficile, il modello continua a riprovare | Riformula la domanda in modo più specifico, oppure alza `AGENT_MAX_STEPS` |

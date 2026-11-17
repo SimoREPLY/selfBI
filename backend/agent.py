@@ -22,7 +22,7 @@ PREVIEW_ROWS = 20
 
 # Auth: boto3 picks up AWS_BEARER_TOKEN_BEDROCK (Bedrock API key) from env.
 llm = ChatBedrockConverse(
-    model=os.getenv("BEDROCK_MODEL_ID", "global.openai.gpt-6-luna"),
+    model=os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-5-5"),
     region_name=os.getenv("AWS_REGION", "eu-north-1"),
     max_tokens=16000,
 )
