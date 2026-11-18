@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react'
+import { motion, MotionConfig, type Variants } from 'motion/react'
 import type { ChartSpec } from './Chart'
 
 // Recharts is the heaviest dependency and only needed once a result arrives:
@@ -74,7 +75,29 @@ const IconChart = () => (
   <Icon size={18}><path d="M4 20h16" /><path d="M7 16v-5M12 16V7M17 16v-8" /></Icon>
 )
 
-const Mark = () => <span className="mark" aria-hidden="true" />
+/* ---------- Motion ---------- */
+const spring = { type: 'spring', stiffness: 380, damping: 34 } as const
+// Welcome sequence: mark, headline, composer, examples, one after the other.
+const stagger: Variants = { show: { transition: { staggerChildren: 0.08, delayChildren: 0.3 } } }
+const rise: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } },
+}
+
+// The mark: three blades rising left to right, a bar chart that grows. Same paths as public/favicon.svg.
+const BLADES = ['M3 22Q3 15.5 8 13V22Z', 'M9.5 22Q9.5 12.5 14.5 8V22Z', 'M16 22Q16 9.5 21 3V22Z']
+const Sprout = ({ size = 20, mode }: { size?: number; mode?: 'grow' | 'busy' }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} className={`sprout${mode === 'busy' ? ' sprout--busy' : ''}`} aria-hidden="true">
+    {BLADES.map((d, i) =>
+      mode === 'grow' ? (
+        // blades spring up from the baseline in turn, with a little overshoot
+        <motion.path key={d} d={d} style={{ originY: 1 }} initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ type: 'spring', stiffness: 240, damping: 13, delay: 0.05 + i * 0.11 }} />
+      ) : (
+        <path key={d} d={d} />
+      ),
+    )}
+  </svg>
+)
 
 export default function App() {
   const [draft, setDraft] = useState('')
@@ -146,7 +169,10 @@ export default function App() {
   }
 
   const composer = (
-    <form onSubmit={onSubmit} className="composer">
+    // One composer, two homes: centred on the welcome screen, docked under the thread.
+    // The shared layoutId glides it from one to the other when the first question is sent.
+    // layout="position": its size never animates, so the text inside never stretches while typing.
+    <motion.form onSubmit={onSubmit} className="composer" layoutId="composer" layout="position" transition={spring} variants={rise}>
       <label htmlFor="q" className="sr-only">Fai una domanda sui dati di vendita</label>
       <textarea
         id="q"
@@ -163,16 +189,17 @@ export default function App() {
       <button type="submit" className="send" disabled={loading || !draft.trim()} aria-label={loading ? 'Analizzo i dati' : 'Invia la domanda'}>
         {loading ? <span className="send__stop" aria-hidden="true" /> : <IconUp />}
       </button>
-    </form>
+    </motion.form>
   )
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className="shell" data-sidebar={sidebarOpen ? 'open' : 'closed'}>
       <a className="skip-link" href="#q">Vai alla domanda</a>
 
       <aside id="sidebar" className="sidebar" aria-label="Chat">
         <div className="sidebar__top">
-          <span className="logo"><Mark />self-BI</span>
+          <span className="logo display"><Sprout size={22} />self-BI</span>
           <button type="button" className="icon-btn" aria-label="Chiudi la barra laterale" aria-expanded={sidebarOpen} aria-controls="sidebar" onClick={() => setSidebarOpen(false)}>
             <IconSidebar />
           </button>
@@ -188,11 +215,12 @@ export default function App() {
           ) : (
             <ol>
               {chats.map((c) => (
-                <li key={c.id}>
+                // a new chat drops in at the top and pushes the older ones down
+                <motion.li key={c.id} layout initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
                   <button type="button" className="side-item" aria-current={c.id === activeId} onClick={() => openChat(c.id)}>
                     <span>{c.title}</span>
                   </button>
-                </li>
+                </motion.li>
               ))}
             </ol>
           )}
@@ -213,12 +241,12 @@ export default function App() {
                 </button>
               </>
             )}
-            <span className="topbar__title">self-BI <span>Vendite</span></span>
+            <span className="topbar__title display">self-BI <span>Vendite</span></span>
           </div>
           {loading && <div className="progress" aria-hidden="true" />}
         </header>
 
-        <main className={`thread${active ? '' : ' thread--empty'}`} aria-busy={loading}>
+        <motion.main layoutScroll className={`thread${active ? '' : ' thread--empty'}`} aria-busy={loading}>
           <p className="sr-only" aria-live="polite">
             {loading ? 'Sto leggendo lo schema e scrivendo la query…' : ''}
           </p>
@@ -230,10 +258,11 @@ export default function App() {
               <div ref={endRef} className="thread__end" />
             </div>
           ) : (
-            <section className="welcome">
-              <h1>Cosa vuoi sapere dalle vendite?</h1>
+            <motion.section className="welcome" initial="hidden" animate="show" variants={stagger}>
+              <Sprout size={64} mode="grow" />
+              <motion.h1 className="display" variants={rise}>Cosa vuoi sapere dalle vendite?</motion.h1>
               {composer}
-              <ul className="chips" aria-label="Domande di esempio">
+              <motion.ul className="chips" aria-label="Domande di esempio" variants={rise}>
                 {EXAMPLES.map((ex) => (
                   <li key={ex}>
                     <button type="button" onClick={() => ask(ex)} disabled={loading}>
@@ -242,15 +271,16 @@ export default function App() {
                     </button>
                   </li>
                 ))}
-              </ul>
-            </section>
+              </motion.ul>
+            </motion.section>
           )}
-        </main>
+        </motion.main>
 
         {active && <div className="dock"><div className="column">{composer}</div></div>}
         <p className="disclaimer">L'agente può sbagliare: controlla la query SQL prima di usare i numeri.</p>
       </div>
     </div>
+    </MotionConfig>
   )
 }
 
@@ -258,11 +288,13 @@ function Turn({ entry, onRetry, busy }: { entry: Entry; onRetry: () => void; bus
   const { question, result, error } = entry
   return (
     <article className="turn">
-      <div className="msg-user"><p>{question}</p></div>
+      <motion.div className="msg-user" initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} style={{ originX: 1, originY: 1 }} transition={spring}>
+        <p>{question}</p>
+      </motion.div>
       <div className="msg-bot">
         {!result && !error && (
           <p className="thinking">
-            <span className="thinking__dot" aria-hidden="true" />
+            <Sprout size={20} mode="busy" />
             <span className="shimmer">Sto leggendo lo schema e scrivendo la query…</span>
           </p>
         )}

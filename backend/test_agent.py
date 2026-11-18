@@ -1,6 +1,6 @@
 import pytest
 
-from agent import fit_chart, is_time_axis
+from agent import auto_chart, fit_chart, is_time_axis
 
 
 @pytest.mark.parametrize("name,values,expected", [
@@ -36,3 +36,26 @@ def test_categories_keep_model_choice():
     res = {"columns": ["regione", "n"], "rows": [["Sud", 1], ["Nord", 2]]}
     assert fit_chart("bar", "regione", ["n"], "t", res)["type"] == "bar"
     assert fit_chart("pie", "regione", ["n", "m"], "t", res)["y"] == ["n"]
+
+
+def test_auto_chart_ranking_of_customers():
+    # the real case: "fatturato del miglior cliente" came back as a top 5 with no chart
+    res = {"columns": ["id", "name", "region", "fatturato_totale", "fatturato_completato"],
+           "rows": [[144, "Cliente 144", "Nord", 192175.27, 147456.59], [116, "Cliente 116", "Sud", 179895.48, 118934.7]]}
+    spec = auto_chart(res, "Fatturato del miglior cliente")
+    assert spec == {"type": "bar", "x": "name", "y": ["fatturato_totale", "fatturato_completato"],
+                    "title": "Fatturato del miglior cliente"}
+
+
+def test_auto_chart_numeric_years_become_a_line():
+    res = {"columns": ["anno", "fatturato"], "rows": [[2025, 3.0], [2024, 2.0]]}
+    assert auto_chart(res, "t") == {"type": "line", "x": "anno", "y": ["fatturato"], "title": "t"}
+
+
+@pytest.mark.parametrize("res", [
+    {"columns": ["name", "fatturato"], "rows": [["Cliente 144", 1.0]]},     # single row: the answer says it
+    {"columns": ["name", "region"], "rows": [["a", "Nord"], ["b", "Sud"]]},  # nothing to measure
+    {"columns": ["id", "n"], "rows": [[1, 5], [2, 6]]},                      # no category or time axis
+])
+def test_auto_chart_skips(res):
+    assert auto_chart(res, "t") is None

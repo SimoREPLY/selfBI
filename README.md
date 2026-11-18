@@ -5,7 +5,7 @@ Scrivi "fatturato mensile 2025": l'agente legge lo schema, scrive ed esegue la q
 
 | Parte | Tecnologia |
 |---|---|
-| LLM | Amazon Bedrock (default: Anthropic Claude Haiku 5.5, region `eu-north-1`), autenticazione con **Bedrock API key** |
+| LLM | Amazon Bedrock (default: Anthropic Claude Haiku 5.5, region `eu-central-1`), autenticazione con **Bedrock API key** |
 | Agente | LangChain 1.x (`create_agent`, che gira su LangGraph) + `langchain-aws` (`ChatBedrockConverse`) |
 | Backend | Python, FastAPI, SQLAlchemy |
 | Frontend | React 19, TypeScript, Vite, Recharts |
@@ -352,7 +352,7 @@ Tutte le variabili stanno in `backend/.env`:
 | Variabile | Default | Descrizione |
 |---|---|---|
 | `AWS_BEARER_TOKEN_BEDROCK` | — | **Bedrock API key** (console Bedrock → API keys). Obbligatoria |
-| `AWS_REGION` | `eu-north-1` | Region Bedrock. Le key *short-term* sono legate alla region in cui sono state generate |
+| `AWS_REGION` | `eu-central-1` | Region Bedrock. Le key *short-term* sono legate alla region in cui sono state generate |
 | `BEDROCK_MODEL_ID` | `global.anthropic.claude-haiku-5-5` | ID del modello o dell'inference profile. Se la console indica un profilo (`global.`), usa quello invece dell'ID base |
 | `DATABASE_URL` | vuoto → DB demo | URL SQLAlchemy |
 | `MAX_ROWS` | `1000` | Righe massime restituite all'interfaccia |
